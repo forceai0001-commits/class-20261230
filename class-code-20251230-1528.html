@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 課程情境規劃表 | 宏大職訓 × Force Cheng</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- 引入 PapaParse 用於解析 CSV (CDN) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <style>
+        :root {
+            --google-blue: #1a73e8;
+            --google-blue-dark: #1557b0;
+            --google-red: #ea4335;
+            --google-green: #34a853;
+            --google-yellow: #fbbc04;
+            --gray-50: #f8f9fa;
+            --gray-100: #f1f3f4;
+            --gray-200: #e8eaed;
+            --gray-600: #5f6368;
+            --gray-800: #202124;
+            --shadow-card: 0 1px 2px 0 rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15);
+            --shadow-hover: 0 1px 3px 0 rgba(60,64,67,0.3), 0 4px 8px 3px rgba(60,64,67,0.15);
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: var(--gray-50);
+            color: var(--gray-800);
+            margin: 0;
+            padding: 0;
+            line-height: 1.5;
+        }
+
+        /* Header */
+        header {
+            background: white;
+            padding: 1rem;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .header-content {
+            max-width: 1000px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .title-area h1 {
+            margin: 0;
+            font-size: 1.25rem;
+            color: var(--google-blue);
+        }
+        .title-area p {
+            margin: 0.25rem 0 0;
+            font-size: 0.875rem;
+            color: var(--gray-600);
+        }
+        
+        /* Source Link Button */
+        .source-link {
+            display: inline-flex;
+            align-items: center;
+            margin-top: 0.5rem;
+            text-decoration: none;
+            color: var(--google-green);
+            font-size: 0.85rem;
+            font-weight: 500;
+            background: #e6f4ea;
+            padding: 4px 12px;
+            border-radius: 12px;
+            transition: background 0.2s;
+        }
+        .source-link:hover {
+            background: #ceead6;
+        }
+
+        /* Controls */
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 0.5rem;
+        }
+        .view-toggle {
+            display: flex;
+            background: var(--gray-100);
+            border-radius: 20px;
+            padding: 4px;
+        }
+        .view-btn {
+            border: none;
+            background: transparent;
+            padding: 6px 16px;
+            border-radius: 16px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            color: var(--gray-600);
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        .view-btn.active {
+            background: white;
+            color: var(--google-blue);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+
+        .filter-group {
+            display: flex;
+            gap: 0.5rem;
+            overflow-x: auto;
+            padding-bottom: 4px;
+            -webkit-overflow-scrolling: touch;
+        }
+        .filter-select {
+            padding: 6px 12px;
+            border: 1px solid var(--gray-200);
+            border-radius: 8px;
+            font-size: 0.85rem;
+            color: var(--gray-600);
+            background: white;
+        }
+
+        /* Status Bar */
+        .status-bar {
+            font-size: 0.75rem;
+            color: var(--gray-600);
+            text-align: right;
+            margin-top: -10px;
+            margin-bottom: 10px;
+            padding-right: 1rem;
+        }
+        .status-ok { color: var(--google-green); }
+        .status-error { color: var(--google-red); }
+
+        /* Main Content */
+        main {
+            max-width: 1000px;
+            margin: 1rem auto;
+            padding: 0 1rem;
+        }
+        .card-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+        @media (min-width: 768px) {
+            .card-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        /* Cards */
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.25rem;
+            box-shadow: var(--shadow-card);
+            transition: box-shadow 0.2s;
+            cursor: pointer;
+            border-left: 4px solid transparent;
+        }
+        .card:hover {
+            box-shadow: var(--shadow-hover);
+        }
+        .card.expanded {
+            border-left-color: var(--google-blue);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 0.5rem;
+        }
+        .card-id {
+            font-size: 0.75rem;
+            color: var(--gray-600);
+            background: var(--gray-100);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+            flex-shrink: 0;
+            margin-left: 8px;
+        }
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--gray-800);
+            flex: 1;
+        }
+        .card-narrative {
+            font-size: 0.95rem;
+            color: var(--gray-600);
+            margin-bottom: 1rem;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .card.expanded .card-narrative {
+            -webkit-line-clamp: unset;
+            color: var(--gray-800);
+        }
+
+        /* Tags Area (Collapsed) */
+        .card-preview-tags {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+        }
+        .mini-tag {
+            font-size: 0.7rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: var(--gray-100);
+            color: var(--gray-600);
+        }
+        .mini-tag.S { background: #e8f0fe; color: #1967d2; }
+        .mini-tag.B { background: #e6f4ea; color: #137333; }
+        .mini-tag.M { background: #fce8e6; color: #c5221f; }
+        .mini-tag.Other { background: #f1f3f4; color: #5f6368; }
+
+        /* Expanded Details */
+        .card-details {
+            display: none;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--gray-100);
+            animation: fadeIn 0.3s ease;
+        }
+        .card.expanded .card-details {
+            display: block;
+        }
+        .card.expanded .card-preview-tags {
+            display: none;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .detail-section {
+            margin-bottom: 1rem;
+        }
+        .detail-title {
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: var(--gray-600);
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        /* List for detailed codes */
+        .code-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .code-item {
+            display: flex;
+            font-size: 0.9rem;
+            align-items: flex-start; /* Changed to start for wrapping text */
+        }
+        .code-badge {
+            font-family: monospace;
+            font-size: 0.8rem;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-right: 8px;
+            min-width: 50px;
+            text-align: center;
+            flex-shrink: 0;
+            margin-top: 2px; /* Align with text */
+        }
+        .code-desc {
+            color: var(--gray-800);
+            word-break: break-word;
+        }
+        
+        /* Specific Code Colors */
+        .badge-B { background: #e6f4ea; color: #137333; }
+        .badge-M { background: #fce8e6; color: #c5221f; }
+        .badge-T { background: #feefe3; color: #b06000; }
+        .badge-S { background: #e8f0fe; color: #1967d2; }
+        .badge-iPAS { background: #f1f3f4; color: #5f6368; border: 1px solid #dadce0; }
+        .badge-Other { background: #eee; color: #777; }
+
+        /* Footer */
+        footer {
+            margin-top: 3rem;
+            padding: 2rem 1rem;
+            background: white;
+            border-top: 1px solid var(--gray-200);
+            text-align: center;
+            font-size: 0.8rem;
+            color: var(--gray-600);
+        }
+
+        /* Forward View Styling */
+        .section-header {
+            grid-column: 1 / -1;
+            margin-top: 1.5rem;
+            margin-bottom: 0.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--gray-200);
+            color: var(--google-blue-dark);
+        }
+        .reverse-ref {
+            font-size: 0.85rem;
+            background: var(--gray-100);
+            padding: 4px 8px;
+            border-radius: 4px;
+            margin-bottom: 4px;
+            display: inline-block;
+            margin-right: 4px;
+        }
+        
+        #loading-indicator {
+            text-align: center;
+            padding: 2rem;
+            color: var(--gray-600);
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="header-content">
+        <div class="title-area">
+            <h1>AI 課程情境與內容對照表</h1>
+            <p>宏大職訓中心 × Force Cheng | 討論底稿 v1.3 (智慧標題版)</p>
+            <a href="https://docs.google.com/spreadsheets/d/1VeS9eBSvBZjkSZmjAOm0ujI8csxy57FFSoWtBxMhsIY/edit?usp=sharing" target="_blank" class="source-link">
+                📊 查看原始 Google Sheet 資料源
+            </a>
+        </div>
+        <div class="controls">
+            <div class="view-toggle">
+                <button class="view-btn active" onclick="switchView('reverse')" id="btn-reverse">情境導向 (逆向)</button>
+                <button class="view-btn" onclick="switchView('forward')" id="btn-forward">課程內容 (順向)</button>
+            </div>
+            <div class="filter-group" id="filter-container">
+                <!-- Filters will be injected here -->
+            </div>
+        </div>
+    </div>
+</header>
+<div class="header-content">
+    <div id="data-status" class="status-bar">正在讀取 Google Sheet...</div>
+</div>
+
+<main id="main-content">
+    <div id="loading-indicator">
+        正在連線至 Google Sheet 取得最新資料...<br>
+        <small>若讀取過久，將自動切換為內建備份資料。</small>
+    </div>
+</main>
+
+<footer>
+    <p>© 2025/12/30 Force Cheng 原力狐 老師</p>
+    <p>本頁為 AI 課程與體驗課規劃之內部討論用資料底稿。</p>
+    <p>未經同意不得對外商用、轉售或重新散佈。</p>
+    <p>引用或改作請標註來源：Force Cheng × 宏大職訓中心</p>
+</footer>
+
+<script>
+    // ==========================================
+    // 1. SETTINGS & FALLBACK DATA
+    // ==========================================
+    
+    // Google Sheet Config
+    const SHEET_ID = '1VeS9eBSvBZjkSZmjAOm0ujI8csxy57FFSoWtBxMhsIY';
+    
+    // 備用資料 (Fallback Data) 
+    const FALLBACK_DATA = {
+        b_dict: {
+            "B001": { title: "專業或複雜內容轉白話", desc: "將專業名詞...轉換為一般人可以理解的語言" },
+            "B002": { title: "關鍵資訊與重點抓取", desc: "抓出關鍵條件、數字、期限與重點" }
+        },
+        m_dict: {
+            "M001": { title: "高風險關鍵字與禁忌辨識", desc: "辨識文件...代表高風險、禁忌的關鍵字" },
+            "M002": { title: "專業轉交與停損邊界判斷", desc: "判斷哪些情況必須停止處理" }
+        },
+        t_dict: {
+            "T001": "Google Gemini", "T007": "Google Lens"
+        },
+        s_dict: {
+            "S01": "醫療與健康理解"
+        },
+        contexts: [
+            {
+                id: "C01",
+                title: "看不懂的藥袋、藥單 (備份資料)",
+                narrative: "這是備份資料。日常生活收到藥袋，需理解劑量、時機與禁忌。",
+                b_codes: [
+                    {code:"B001", type:"B", text:"專業內容轉白話"},
+                    {code:"B002", type:"B", text:"抓出關鍵重點"}
+                ],
+                m_codes: [
+                    {code:"M001", type:"M", text:"高風險關鍵字辨識"}, 
+                    {code:"M002", type:"M", text:"轉交專業邊界"}
+                ],
+                t_codes: [
+                    {code:"T007", type:"T", text:"Google Lens (拍照)"},
+                    {code:"T001", type:"T", text:"Google Gemini"}
+                ],
+                s_codes: [
+                    {code:"S01", type:"S", text:"醫療與健康理解"}
+                ],
+                ipas: [
+                    {code:"L11101", type:"iPAS", text:"L11101"}
+                ]
+            }
+        ]
+    };
+
+    // Global Data Containers
+    let b_dict = {};
+    let m_dict = {};
+    let t_dict = {};
+    let s_dict = {};
+    let contexts = [];
+
+    // ==========================================
+    // 2. DATA LOADING LOGIC (ETL)
+    // ==========================================
+
+    async function fetchAllData() {
+        const statusEl = document.getElementById('data-status');
+        
+        try {
+            const fetchSheet = (sheetName) => {
+                const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
+                return fetch(url).then(r => {
+                    if(!r.ok) throw new Error(`Sheet ${sheetName} not found`);
+                    return r.text();
+                });
+            };
+
+            const results = await Promise.allSettled([
+                fetchSheet('30情境'),      
+                fetchSheet('B分類-基本課程'),   
+                fetchSheet('Ｍ分類-進階課程'),   
+                fetchSheet('Ｔ分類-工具'),     
+                fetchSheet('S分類-情境')       
+            ]);
+
+            const [resC, resB, resM, resT, resS] = results;
+
+            // Process Dictionaries
+            if (resB.status === 'fulfilled') processBDict(resB.value);
+            else b_dict = FALLBACK_DATA.b_dict;
+
+            if (resM.status === 'fulfilled') processMDict(resM.value);
+            else m_dict = FALLBACK_DATA.m_dict;
+
+            if (resT.status === 'fulfilled') processTDict(resT.value);
+            else t_dict = FALLBACK_DATA.t_dict;
+
+            if (resS.status === 'fulfilled') processSDict(resS.value);
+            else s_dict = FALLBACK_DATA.s_dict;
+
+            // Process Contexts
+            if (resC.status === 'fulfilled') {
+                processContexts(resC.value);
+                statusEl.innerHTML = '<span class="status-ok">● 已連線至 Google Sheet (即時資料)</span>';
+            } else {
+                console.warn("Failed Context fetch, using fallback");
+                contexts = FALLBACK_DATA.contexts;
+                statusEl.innerHTML = '<span class="status-error">● 無法讀取 Sheet (使用備份資料) - 請確認分頁名稱</span>';
+            }
+
+            initApp();
+
+        } catch (e) {
+            console.error("Critical Fetch Error", e);
+            useFallback();
+        }
+    }
+
+    function useFallback() {
+        b_dict = FALLBACK_DATA.b_dict;
+        m_dict = FALLBACK_DATA.m_dict;
+        t_dict = FALLBACK_DATA.t_dict;
+        s_dict = FALLBACK_DATA.s_dict;
+        contexts = FALLBACK_DATA.contexts;
+        document.getElementById('data-status').innerHTML = '<span class="status-error">● 使用內建備份資料 (離線模式)</span>';
+        initApp();
+    }
+
+    // --- New Parser: 智慧提取標題模式 ---
+    function parseRawCodes(str) {
+        if (!str) return [];
+        
+        // 1. 切分
+        const parts = str.split(/[;；\n,，、]+/);
+        
+        return parts.map(part => {
+            part = part.trim();
+            if (!part) return null;
+            
+            // 2. 智慧提取：把 "B001 標題" 分離成 Code: B001, Text: 標題
+            // Pattern: 抓開頭的 代號 (B001) + 後面剩下的所有文字
+            const match = part.match(/^([BMTLS]\d{2,5})(.*)/i);
+            
+            let code = null;
+            let type = 'Other';
+            let cleanText = part; // 預設全部都是文字
+
+            if (match) {
+                code = match[1].toUpperCase(); // e.g., B001
+                const prefix = match[1].charAt(0).toUpperCase();
+                
+                // 設定類型
+                if (prefix === 'B') type = 'B';
+                if (prefix === 'M') type = 'M';
+                if (prefix === 'T') type = 'T';
+                if (prefix === 'S') type = 'S';
+                if (prefix === 'L') type = 'iPAS';
+
+                // 清理剩下的文字：移除開頭的 空格、冒號、點、Dash
+                let remaining = match[2].trim();
+                remaining = remaining.replace(/^[:\.\-\s]+/, '');
+                
+                // 只有當剩下的文字不是空白時，才把它當作 Text
+                // 否則如果是 "B001" (remaining是空)，就讓渲染層去查字典
+                if (remaining.length > 0) {
+                    cleanText = remaining;
+                } else {
+                    cleanText = ""; // 標記為空，等待查字典
+                }
+            } else {
+                // 沒有代號的情況 (純文字)
+                // 維持 type=Other (或由外部指定)
+                // cleanText 就是 part 本身
+            }
+
+            return {
+                code: code,
+                type: type,
+                text: cleanText, // 這是去掉代號後的「乾淨標題」
+                raw: part       // 保留原始完整字串以備不時之需
+            };
+        }).filter(item => item !== null);
+    }
+
+    function parseWithDefaultType(str, defaultType) {
+        const items = parseRawCodes(str);
+        items.forEach(item => {
+            if (item.type === 'Other') item.type = defaultType;
+        });
+        return items;
+    }
+
+    function processBDict(csvText) {
+        Papa.parse(csvText, {
+            header: true, skipEmptyLines: true,
+            complete: function(results) {
+                results.data.forEach(row => {
+                    const code = row['B-code'] || row['代碼'];
+                    if (code && code.toUpperCase().startsWith('B')) {
+                        b_dict[code.toUpperCase()] = {
+                            title: row['基礎版內容標題'] || row['標題'] || 'Unknown',
+                            desc: row['基礎版內容描述（討論用）'] || row['描述'] || ''
+                        };
+                    }
+                });
+            }
+        });
+    }
+
+    function processMDict(csvText) {
+        Papa.parse(csvText, {
+            header: true, skipEmptyLines: true,
+            complete: function(results) {
+                results.data.forEach(row => {
+                    const code = row['M-code'];
+                    if (code && code.toUpperCase().startsWith('M')) {
+                        m_dict[code.toUpperCase()] = {
+                            title: row['進階版內容標題'] || 'Unknown',
+                            desc: row['進階版內容描述（討論用）'] || ''
+                        };
+                    }
+                });
+            }
+        });
+    }
+
+    function processTDict(csvText) {
+        Papa.parse(csvText, {
+            header: true, skipEmptyLines: true,
+            complete: function(results) {
+                results.data.forEach(row => {
+                    const code = row['工具代碼'];
+                    if (code && code.toUpperCase().startsWith('T')) {
+                        t_dict[code.toUpperCase()] = row['工具名稱'] + (row['工具定位說明（功能摘要）'] ? ` (${row['工具定位說明（功能摘要）']})` : '');
+                    }
+                });
+            }
+        });
+    }
+
+    function processSDict(csvText) {
+        Papa.parse(csvText, {
+            header: true, skipEmptyLines: true,
+            complete: function(results) {
+                results.data.forEach(row => {
+                    const code = row['S-code'];
+                    if (code && code.toUpperCase().startsWith('S')) {
+                        s_dict[code.toUpperCase()] = row['情境分類標題'];
+                    }
+                });
+            }
+        });
+    }
+
+    function processContexts(csvText) {
+        Papa.parse(csvText, {
+            header: true, skipEmptyLines: true,
+            complete: function(results) {
+                contexts = results.data.map((row, index) => {
+                    const title = row['A_常見情境'] || row['情境名稱'];
+                    if (!title) return null;
+
+                    return {
+                        id: `C${String(index + 1).padStart(2, '0')}`,
+                        title: title,
+                        narrative: row['B_情境說明（完善版）'] || row['情境說明'] || '',
+                        b_codes: parseWithDefaultType(row['C_基礎版課程會講的內容'], 'B'),
+                        m_codes: parseWithDefaultType(row['D_進階版課程會講的內容'], 'M'),
+                        t_codes: parseWithDefaultType(row['E_工具生態（Google主 / OpenAI輔 / 其他龍頭）'], 'T'),
+                        s_codes: parseWithDefaultType(row['G_對應情境'], 'S'),
+                        ipas: parseWithDefaultType(row['F_iPAS考科（可多選）'], 'iPAS')
+                    };
+                }).filter(item => item !== null);
+            }
+        });
+    }
+
+    // ==========================================
+    // 3. LOGIC CENTER
+    // ==========================================
+
+    let currentView = 'reverse';
+    let currentFilter = { type: 'all', value: '' };
+
+    function initApp() {
+        renderFilters();
+        renderMain();
+    }
+
+    function switchView(viewName) {
+        currentView = viewName;
+        document.getElementById('btn-reverse').classList.toggle('active', viewName === 'reverse');
+        document.getElementById('btn-forward').classList.toggle('active', viewName === 'forward');
+        renderMain();
+    }
+
+    function setFilter(type, value) {
+        currentFilter = { type, value };
+        renderMain();
+    }
+
+    // --- Rendering Helpers ---
+
+    function getTagHTML(item) {
+        // item = { code: 'B001' or null, type: 'B', text: '標題' or '', raw: ... }
+        let badgeClass = 'badge-Other';
+        if (item.type === 'B') badgeClass = 'badge-B';
+        else if (item.type === 'M') badgeClass = 'badge-M';
+        else if (item.type === 'T') badgeClass = 'badge-T';
+        else if (item.type === 'S') badgeClass = 'badge-S';
+        else if (item.type === 'iPAS') badgeClass = 'badge-iPAS';
+
+        const badgeText = item.code || '•';
+        
+        // 標題顯示邏輯：
+        // 1. 如果有 clean text (CSV有寫字)，顯示 clean text
+        // 2. 如果沒有 clean text 但有 code (CSV只寫代號)，去查字典
+        // 3. 都不行，顯示代號本身以免空白
+        let displayText = item.text;
+        
+        if (!displayText && item.code) {
+            if (item.type === 'B' && b_dict[item.code]) displayText = b_dict[item.code].title;
+            else if (item.type === 'M' && m_dict[item.code]) displayText = m_dict[item.code].title;
+            else if (item.type === 'T' && t_dict[item.code]) displayText = t_dict[item.code];
+            else if (item.type === 'S' && s_dict[item.code]) displayText = s_dict[item.code];
+            else displayText = ""; // iPAS 或找不到字典
+        }
+        
+        if (!displayText) displayText = item.raw || "";
+
+        return `
+            <div class="code-item">
+                <span class="code-badge ${badgeClass}">${badgeText}</span>
+                <span class="code-desc">${displayText}</span>
+            </div>
+        `;
+    }
+
+    function renderMain() {
+        const container = document.getElementById('main-content');
+        container.innerHTML = '';
+
+        if (contexts.length === 0) {
+            container.innerHTML = '<div style="text-align:center; padding:2rem;">載入中或無資料...</div>';
+            return;
+        }
+
+        if (currentView === 'reverse') {
+            renderReverseView(container);
+        } else {
+            renderForwardView(container);
+        }
+    }
+
+    // 1️⃣ 逆向視圖
+    function renderReverseView(container) {
+        const grid = document.createElement('div');
+        grid.className = 'card-grid';
+
+        let displayContexts = contexts;
+        if (currentFilter.type !== 'all') {
+            displayContexts = contexts.filter(ctx => {
+                const key = currentFilter.type + '_codes';
+                return ctx[key] && ctx[key].some(item => item.code === currentFilter.value);
+            });
+        }
+
+        displayContexts.forEach(ctx => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.onclick = () => card.classList.toggle('expanded');
+
+            const b_list = ctx.b_codes.map(item => getTagHTML(item)).join('');
+            const m_list = ctx.m_codes.map(item => getTagHTML(item)).join('');
+            const t_list = ctx.t_codes.map(item => getTagHTML(item)).join('');
+            const s_list = ctx.s_codes.map(item => getTagHTML(item)).join('');
+            const i_list = ctx.ipas.map(item => getTagHTML(item)).join('');
+
+            // Preview tags
+            const makeMiniTag = (item) => {
+                // 如果有文字，用文字前幾個字；如果沒有文字只有 Code，用 Code
+                let label = item.code;
+                if (!label && item.text) label = item.text.substring(0, 5) + '..';
+                if (!label) label = '?';
+                return `<span class="mini-tag ${item.type}">${label}</span>`;
+            };
+
+            const previewTags = [
+                ...ctx.s_codes.map(makeMiniTag),
+                ...ctx.b_codes.map(makeMiniTag),
+                ...ctx.m_codes.map(makeMiniTag)
+            ].join('');
+
+            card.innerHTML = `
+                <div class="card-header">
+                    <div class="card-title">${ctx.title}</div>
+                    <div class="card-id">${ctx.id}</div>
+                </div>
+                <div class="card-narrative">${ctx.narrative}</div>
+                <div class="card-preview-tags">${previewTags}</div>
+                <div class="card-details">
+                    ${ctx.s_codes.length ? `<div class="detail-section"><div class="detail-title">情境分類 (S)</div><div class="code-list">${s_list}</div></div>` : ''}
+                    ${ctx.b_codes.length ? `<div class="detail-section"><div class="detail-title">基礎課程點 (B)</div><div class="code-list">${b_list}</div></div>` : ''}
+                    ${ctx.m_codes.length ? `<div class="detail-section"><div class="detail-title">進階課程點 (M)</div><div class="code-list">${m_list}</div></div>` : ''}
+                    ${ctx.t_codes.length ? `<div class="detail-section"><div class="detail-title">使用工具 (T)</div><div class="code-list">${t_list}</div></div>` : ''}
+                    ${ctx.ipas.length ? `<div class="detail-section"><div class="detail-title">iPAS 考點</div><div class="code-list">${i_list}</div></div>` : ''}
+                </div>
+            `;
+            grid.appendChild(card);
+        });
+
+        if (displayContexts.length === 0) {
+            container.innerHTML = '<div style="text-align:center; padding:2rem; color:var(--gray-600)">沒有符合篩選條件的情境</div>';
+        } else {
+            container.appendChild(grid);
+        }
+    }
+
+    // 2️⃣ 順向視圖
+    function renderForwardView(container) {
+        let usedB = new Set();
+        let usedM = new Set();
+        
+        contexts.forEach(ctx => {
+            ctx.b_codes.forEach(item => { if(item.code) usedB.add(item.code); });
+            ctx.m_codes.forEach(item => { if(item.code) usedM.add(item.code); });
+        });
+
+        const renderCodeBlock = (codeType, codeSet, dict) => {
+            const sectionTitle = document.createElement('h2');
+            sectionTitle.className = 'section-header';
+            sectionTitle.innerText = codeType === 'B' ? '基礎課程點 (B-Codes)' : '進階課程點 (M-Codes)';
+            container.appendChild(sectionTitle);
+
+            const grid = document.createElement('div');
+            grid.className = 'card-grid';
+
+            Array.from(codeSet).sort().forEach(code => {
+                const relatedContexts = contexts.filter(ctx => {
+                   const list = codeType === 'B' ? ctx.b_codes : ctx.m_codes;
+                   return list.some(item => item.code === code);
+                });
+                
+                if (relatedContexts.length === 0) return;
+
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.onclick = () => card.classList.toggle('expanded');
+
+                const info = dict[code] || { title: '此代號未定義詳細說明', desc: '' };
+                const relatedHTML = relatedContexts.map(ctx => 
+                    `<div class="reverse-ref">${ctx.id} ${ctx.title}</div>`
+                ).join('');
+
+                card.innerHTML = `
+                     <div class="card-header">
+                        <div class="card-title"><span class="code-badge badge-${codeType}">${code}</span> ${info.title}</div>
+                    </div>
+                    <div class="card-narrative">${info.desc}</div>
+                    <div class="card-details" style="display:block; margin-top:0.5rem; padding-top:0.5rem; border-top:1px dashed var(--gray-200)">
+                        <div class="detail-title">應用此概念的情境：</div>
+                        <div>${relatedHTML}</div>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+            container.appendChild(grid);
+        };
+
+        renderCodeBlock('B', usedB, b_dict);
+        renderCodeBlock('M', usedM, m_dict);
+    }
+
+    function renderFilters() {
+        const container = document.getElementById('filter-container');
+        container.innerHTML = ''; 
+        
+        const resetBtn = document.createElement('button');
+        resetBtn.className = 'filter-select';
+        resetBtn.innerText = '全部顯示';
+        resetBtn.style.fontWeight = 'bold';
+        resetBtn.onclick = () => setFilter('all', '');
+        container.appendChild(resetBtn);
+
+        const createSelect = (label, type, dict, codesInUse) => {
+            const select = document.createElement('select');
+            select.className = 'filter-select';
+            select.onchange = (e) => setFilter(type, e.target.value);
+            
+            const defaultOpt = document.createElement('option');
+            defaultOpt.text = `依 ${label} 篩選...`;
+            defaultOpt.value = "";
+            select.appendChild(defaultOpt);
+
+            codesInUse.sort().forEach(code => {
+                const opt = document.createElement('option');
+                opt.value = code;
+                let name = "";
+                if(type === 's') name = dict[code] || code;
+                if(type === 'b' || type === 'm') name = dict[code]?.title || code;
+                if(name.length > 15) name = name.substring(0,15) + "...";
+                opt.text = `${code} ${name}`;
+                select.appendChild(opt);
+            });
+            container.appendChild(select);
+        };
+
+        let uS = new Set(), uB = new Set(), uM = new Set();
+        contexts.forEach(ctx => {
+            ctx.s_codes.forEach(item => { if(item.code) uS.add(item.code); });
+            ctx.b_codes.forEach(item => { if(item.code) uB.add(item.code); });
+            ctx.m_codes.forEach(item => { if(item.code) uM.add(item.code); });
+        });
+
+        createSelect('情境 (S)', 's', s_dict, Array.from(uS));
+        createSelect('基礎 (B)', 'b', b_dict, Array.from(uB));
+        createSelect('進階 (M)', 'm', m_dict, Array.from(uM));
+    }
+
+    // Start
+    fetchAllData();
+
+</script>
+
+</body>
+</html>
