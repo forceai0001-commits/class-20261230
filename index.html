@@ -60,22 +60,41 @@
             color: var(--gray-600);
         }
         
-        /* Source Link Button */
+        /* Links Area */
+        .links-area {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 0.5rem;
+        }
+
+        /* Source Link Button Base */
         .source-link {
             display: inline-flex;
             align-items: center;
-            margin-top: 0.5rem;
             text-decoration: none;
-            color: var(--google-green);
             font-size: 0.85rem;
             font-weight: 500;
-            background: #e6f4ea;
             padding: 4px 12px;
             border-radius: 12px;
             transition: background 0.2s;
         }
-        .source-link:hover {
+        
+        /* Specific Link Colors */
+        .link-sheet {
+            color: var(--google-green);
+            background: #e6f4ea;
+        }
+        .link-sheet:hover {
             background: #ceead6;
+        }
+
+        .link-slide {
+            color: var(--google-red);
+            background: #fce8e6;
+        }
+        .link-slide:hover {
+            background: #fad2cf;
         }
 
         /* Controls */
@@ -336,10 +355,15 @@
     <div class="header-content">
         <div class="title-area">
             <h1>AI 課程情境與內容對照表</h1>
-            <p>宏大職訓中心 × Force Cheng | 討論底稿 v1.3 (智慧標題版)</p>
-            <a href="https://docs.google.com/spreadsheets/d/1VeS9eBSvBZjkSZmjAOm0ujI8csxy57FFSoWtBxMhsIY/edit?usp=sharing" target="_blank" class="source-link">
-                📊 查看原始 Google Sheet 資料源
-            </a>
+            <p>宏大職訓中心 × Force Cheng | 討論底稿 v1.4</p>
+            <div class="links-area">
+                <a href="https://docs.google.com/spreadsheets/d/1VeS9eBSvBZjkSZmjAOm0ujI8csxy57FFSoWtBxMhsIY/edit?usp=sharing" target="_blank" class="source-link link-sheet">
+                    📊 查看 Google Sheet
+                </a>
+                <a href="https://drive.google.com/file/d/1NPPl5RLz6YA-JcYJ-dDprnfUEQME2efm/view?usp=sharing" target="_blank" class="source-link link-slide">
+                    📑 查看簡報檔
+                </a>
+            </div>
         </div>
         <div class="controls">
             <div class="view-toggle">
@@ -538,8 +562,6 @@
                 }
             } else {
                 // 沒有代號的情況 (純文字)
-                // 維持 type=Other (或由外部指定)
-                // cleanText 就是 part 本身
             }
 
             return {
@@ -681,10 +703,6 @@
 
         const badgeText = item.code || '•';
         
-        // 標題顯示邏輯：
-        // 1. 如果有 clean text (CSV有寫字)，顯示 clean text
-        // 2. 如果沒有 clean text 但有 code (CSV只寫代號)，去查字典
-        // 3. 都不行，顯示代號本身以免空白
         let displayText = item.text;
         
         if (!displayText && item.code) {
@@ -692,7 +710,7 @@
             else if (item.type === 'M' && m_dict[item.code]) displayText = m_dict[item.code].title;
             else if (item.type === 'T' && t_dict[item.code]) displayText = t_dict[item.code];
             else if (item.type === 'S' && s_dict[item.code]) displayText = s_dict[item.code];
-            else displayText = ""; // iPAS 或找不到字典
+            else displayText = ""; 
         }
         
         if (!displayText) displayText = item.raw || "";
@@ -747,7 +765,6 @@
 
             // Preview tags
             const makeMiniTag = (item) => {
-                // 如果有文字，用文字前幾個字；如果沒有文字只有 Code，用 Code
                 let label = item.code;
                 if (!label && item.text) label = item.text.substring(0, 5) + '..';
                 if (!label) label = '?';
